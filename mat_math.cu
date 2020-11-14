@@ -4,6 +4,7 @@
 #define TILE_WIDTH 32
 #define threadsPerBlock 32
 
+// Compute matrix multiplication C = A x B
 __global__ void cuda_MatMul(const float* A, const float* B, float* C,
                        int ARows, int ACols,
                        int BRows, int BCols,
@@ -43,6 +44,7 @@ __global__ void cuda_MatMul(const float* A, const float* B, float* C,
            (blockIdx.x * blockDim.x)+ threadIdx.x] = CValue;
 }
 
+// Compute matrix Addition C = A + B
 __global__ void cuda_MatAdd(const float* A, const float* B, float* C, int n) {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
     int stride = blockDim.x * gridDim.x;
@@ -52,6 +54,7 @@ __global__ void cuda_MatAdd(const float* A, const float* B, float* C, int n) {
     }
 }
 
+// Compute matrix Subtraction C = A - B
 __global__ void cuda_MatSub(const float* A, const float* B, float* C, int n) {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
     int stride = blockDim.x * gridDim.x;
@@ -61,16 +64,7 @@ __global__ void cuda_MatSub(const float* A, const float* B, float* C, int n) {
     }
 }
 
-__global__ void cuda_MatExp(const float* src, float* dst, int n) {
-    int tid = threadIdx.x + blockIdx.x * blockDim.x;
-    int stride = blockDim.x * gridDim.x;
-    while (tid < n) {
-        dst[tid] =  __expf(src[tid]);
-        tid += stride;
-    }
-}
-
-/* Element-wise multiply: C = A dot B*/
+// Element-Wise Multiply C[i][j] = A[i][j] * B[i][j]
 __global__ void cuda_MatEleMul(const float* A, const float* B, float* C, int n) {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
     int stride = blockDim.x * gridDim.x;
@@ -80,7 +74,7 @@ __global__ void cuda_MatEleMul(const float* A, const float* B, float* C, int n) 
     }
 }
 
-/* Element-wise multiply: B = m x A*/
+// Element-Wise Multiply C[i][j] = A[i][j] * m
 __global__ void cuda_MatEleMul(const float* A, const float m, float* B, int n) {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
     int stride = blockDim.x * gridDim.x;
@@ -90,6 +84,7 @@ __global__ void cuda_MatEleMul(const float* A, const float m, float* B, int n) {
     }
 }
 
+// Matrix Transpose B = A^T
 __global__ void cuda_Transpose(const float* src, float* dst, int srcCols, int dstCols, int n) {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
     int stride = blockDim.x * gridDim.x;
@@ -103,6 +98,17 @@ __global__ void cuda_Transpose(const float* src, float* dst, int srcCols, int ds
     }
 }
 
+// Compute matrix exponential operation B[i][j] = exp(A[i][j])
+__global__ void cuda_MatExp(const float* src, float* dst, int n) {
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    int stride = blockDim.x * gridDim.x;
+    while (tid < n) {
+        dst[tid] =  __expf(src[tid]);
+        tid += stride;
+    }
+}
+
+// Compute matrix ReLU operation B[i][j] = ReLU(A[i][j]) [B[i][j] = max(0, A[i][j])]
 __global__ void cuda_ReLU(const float* src, float* dst, int n) {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
     int stride = blockDim.x * gridDim.x;
@@ -115,6 +121,7 @@ __global__ void cuda_ReLU(const float* src, float* dst, int n) {
     }
 }
 
+// Compute matrix derivative of ReLU operation B[i][j] = dReLU(A[i][j]) [B[i][j] = 1 if A[i][j] > 0 else 0]
 __global__ void cuda_dReLU(const float* src, float* dst, int n) {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
     int stride = blockDim.x * gridDim.x;
@@ -127,7 +134,7 @@ __global__ void cuda_dReLU(const float* src, float* dst, int n) {
     }
 }
 
-// Sigmoid(x) = 1 / ( 1 + exp(-x) )
+// Compute matrix Sigmoid operation B[i][j] = Sigmoid(A[i][j])  [S(x) = 1 / (1+exp(-x)) ]
 __global__ void cuda_Sigmoid(const float* src, float* dst, int n) {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
     int stride = blockDim.x * gridDim.x;
@@ -141,7 +148,7 @@ __global__ void cuda_Sigmoid(const float* src, float* dst, int n) {
 
 }
 
-// dSigmoid(x) = exp(-x) / (1+exp(-x))^2
+// Compute matrix derivative of Sigmoid function  B[i][j] = dSigmoid(A[i][j]) [dSigmoid(x) = exp(-x) / (1+exp(-x))^2]
 __global__ void cuda_dSigmoid(const float* src, float* dst, int n) {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
     int stride = blockDim.x * gridDim.x;
@@ -157,12 +164,12 @@ __global__ void cuda_dSigmoid(const float* src, float* dst, int n) {
 
 
 
-gpuMat* MatMul(const gpuMat* A, const gpuMat* B) {
+GpuMat* MatMul(const GpuMat* A, const GpuMat* B) {
     if (A->Data == nullptr || B->Data == nullptr || A->cols != B->rows) {
-        std::cout << "Invalid matmul" << std::endl;
+        std::cout << "Invalid Matrix Multiplication" << std::endl;
         exit(0);
     }
-    gpuMat* C = new gpuMat(A->rows, B->cols, A->channels);
+    GpuMat* C = new GpuMat(A->rows, B->cols, A->channels);
     int sizeA = A->rows * A->cols;
     int sizeB = B->rows * B->cols;
     int sizeC = C->rows * C->cols;
@@ -181,8 +188,13 @@ gpuMat* MatMul(const gpuMat* A, const gpuMat* B) {
     return C;
 }
 
-gpuMat* MatAdd(const gpuMat* A, const gpuMat* B) {
-    gpuMat* C = new gpuMat(A->rows, A->cols, A->channels);
+GpuMat* MatAdd(const GpuMat* A, const GpuMat* B) {
+    if (A->Data == nullptr || B->Data == nullptr || 
+        !(A->rows == B->rows && A->cols == B->cols && A->channels == B->channels)) {
+        std::cout << "Invalid Matrix Addition" << std::endl;
+        exit(0);
+    }
+    GpuMat* C = new GpuMat(A->rows, A->cols, A->channels);
     int size = A->getSize();
     size_t block_size = threadsPerBlock;
     size_t num_blocks = (size / block_size) + ((size % block_size) ? 1 : 0);
@@ -190,8 +202,13 @@ gpuMat* MatAdd(const gpuMat* A, const gpuMat* B) {
     return C;
 }
 
-gpuMat* MatSub(const gpuMat* A, const gpuMat* B) {
-    gpuMat* C = new gpuMat(A->rows, A->cols, A->channels);
+GpuMat* MatSub(const GpuMat* A, const GpuMat* B) {
+    if (A->Data == nullptr || B->Data == nullptr || 
+        !(A->rows == B->rows && A->cols == B->cols && A->channels == B->channels)) {
+        std::cout << "Invalid Matrix Subtraction" << std::endl;
+        exit(0);
+    }
+    GpuMat* C = new GpuMat(A->rows, A->cols, A->channels);
     int size = A->getSize();
     size_t block_size = threadsPerBlock;
     size_t num_blocks = (size / block_size) + ((size % block_size) ? 1 : 0);
@@ -199,17 +216,13 @@ gpuMat* MatSub(const gpuMat* A, const gpuMat* B) {
     return C;
 }
 
-gpuMat* MatExp(const gpuMat* A) {
-    gpuMat* B = new gpuMat(A->rows, A->cols, A->channels);
-    int size = A->getSize();
-    size_t block_size = threadsPerBlock;
-    size_t num_blocks = (size / block_size) + ((size % block_size) ? 1 : 0);
-    cuda_MatExp <<<num_blocks, block_size>>> (A->Data, B->Data, size);
-    return B;
-}
-
-gpuMat* MatEleMul(const gpuMat* A, const gpuMat* B) {
-    gpuMat* C = new gpuMat(A->rows, A->cols, A->channels);
+GpuMat* MatEleMul(const GpuMat* A, const GpuMat* B) {
+    if (A->Data == nullptr || B->Data == nullptr || 
+        !(A->rows == B->rows && A->cols == B->cols && A->channels == B->channels)) {
+        std::cout << "Invalid Matrix Elementwise Multiplication" << std::endl;
+        exit(0);
+    }
+    GpuMat* C = new GpuMat(A->rows, A->cols, A->channels);
     int size = A->getSize();
     size_t block_size = threadsPerBlock;
     size_t num_blocks = (size / block_size) + ((size % block_size) ? 1 : 0);
@@ -217,8 +230,12 @@ gpuMat* MatEleMul(const gpuMat* A, const gpuMat* B) {
     return C;
 }
 
-gpuMat* MatEleMul(const gpuMat* A, float m) {
-    gpuMat* B = new gpuMat(A->rows, A->cols, A->channels);
+GpuMat* MatEleMul(const GpuMat* A, float m) {
+    if (A->Data == nullptr) {
+        std::cout << "Invalid Matrix Elementwise Multiplication" << std::endl;
+        exit(0);
+    }
+    GpuMat* B = new GpuMat(A->rows, A->cols, A->channels);
     int size = A->getSize();
     size_t block_size = threadsPerBlock;
     size_t num_blocks = (size / block_size) + ((size % block_size) ? 1 : 0);
@@ -227,12 +244,16 @@ gpuMat* MatEleMul(const gpuMat* A, float m) {
 
 }
 
-gpuMat* Transpose(const gpuMat* A) {
+GpuMat* MatEleDiv(const GpuMat* A, float m) {
+    return MatEleMul(A, 1/m);
+}
+
+GpuMat* Transpose(const GpuMat* A) {
     if (A->Data == nullptr) {
-        std::cout << "Error for transpose" << std::endl;
+        std::cout << "Invalid Matrix Transpose" << std::endl;
         exit(0);
     }
-    gpuMat *B = new gpuMat(A->cols, A->rows, A->channels);
+    GpuMat *B = new GpuMat(A->cols, A->rows, A->channels);
     int size = B->rows * B->cols;
     size_t block_size = threadsPerBlock;
     size_t num_blocks = (size / block_size) + ((size % block_size) ? 1 : 0);
@@ -244,12 +265,25 @@ gpuMat* Transpose(const gpuMat* A) {
     return B;
 }
 
-gpuMat* ReLU(const gpuMat* A) {
+GpuMat* MatExp(const GpuMat* A) {
     if (A->Data == nullptr) {
-        std::cout << "Error for ReLU" << std::endl;
+        std::cout << "Invalid Matrix Exponential" << std::endl;
         exit(0);
     }
-    gpuMat *B = new gpuMat(A->rows, A->cols, A->channels);
+    GpuMat* B = new GpuMat(A->rows, A->cols, A->channels);
+    int size = A->getSize();
+    size_t block_size = threadsPerBlock;
+    size_t num_blocks = (size / block_size) + ((size % block_size) ? 1 : 0);
+    cuda_MatExp <<<num_blocks, block_size>>> (A->Data, B->Data, size);
+    return B;
+}
+
+GpuMat* ReLU(const GpuMat* A) {
+    if (A->Data == nullptr) {
+        std::cout << "Invalid Matrix ReLU" << std::endl;
+        exit(0);
+    }
+    GpuMat *B = new GpuMat(A->rows, A->cols, A->channels);
     int size = A->getSize();
     size_t block_size = threadsPerBlock;
     size_t num_blocks = (size / block_size) + ((size % block_size) ? 1 : 0);
@@ -257,12 +291,12 @@ gpuMat* ReLU(const gpuMat* A) {
     return B;
 }
 
-gpuMat* dReLU(const gpuMat* A) {
+GpuMat* dReLU(const GpuMat* A) {
     if (A->Data == nullptr) {
-        std::cout << "Error for dReLU" << std::endl;
+        std::cout << "Invalid Matrix dReLU" << std::endl;
         exit(0);
     }
-    gpuMat *B = new gpuMat(A->rows, A->cols, A->channels);
+    GpuMat *B = new GpuMat(A->rows, A->cols, A->channels);
     int size = A->getSize();
     size_t block_size = threadsPerBlock;
     size_t num_blocks = (size / block_size) + ((size % block_size) ? 1 : 0);
@@ -270,12 +304,12 @@ gpuMat* dReLU(const gpuMat* A) {
     return B;
 }
 
-gpuMat* Sigmoid(const gpuMat* A) {
+GpuMat* Sigmoid(const GpuMat* A) {
     if (A->Data == nullptr) {
-        std::cout << "Error for Sigmoid" << std::endl;
+        std::cout << "Invalid Matrix Sigmoid" << std::endl;
         exit(0);
     }
-    gpuMat *B = new gpuMat(A->rows, A->cols, A->channels);
+    GpuMat *B = new GpuMat(A->rows, A->cols, A->channels);
     int size = A->getSize();
     size_t block_size = threadsPerBlock;
     size_t num_blocks = (size / block_size) + ((size % block_size) ? 1 : 0);
@@ -283,12 +317,12 @@ gpuMat* Sigmoid(const gpuMat* A) {
     return B;
 }
 
-gpuMat* dSigmoid(const gpuMat* A) {
+GpuMat* dSigmoid(const GpuMat* A) {
     if (A->Data == nullptr) {
-        std::cout << "Error for Sigmoid" << std::endl;
+        std::cout << "Invalid Matrix dSigmoid" << std::endl;
         exit(0);
     }
-    gpuMat *B = new gpuMat(A->rows, A->cols, A->channels);
+    GpuMat *B = new GpuMat(A->rows, A->cols, A->channels);
     int size = A->getSize();
     size_t block_size = threadsPerBlock;
     size_t num_blocks = (size / block_size) + ((size % block_size) ? 1 : 0);
@@ -296,16 +330,15 @@ gpuMat* dSigmoid(const gpuMat* A) {
     return B;
 }
 
-
-gpuMat* softmax(const gpuMat *input) {
-    gpuMat* tmp = MatExp(input);
-    cpuMat* cm = new cpuMat(*tmp);
+GpuMat* softmax(const GpuMat *input) {
+    GpuMat* tmp = MatExp(input);
+    CpuMat* cm = CpuMat::copy(tmp);
     float sum = 0.0;
     for (int idx=0; idx<cm->getSize(); idx++) {
         sum += cm->Data[idx];
     }
     float m = 1 / sum;
-    gpuMat* output = MatEleMul(tmp, m);
+    GpuMat* output = MatEleMul(tmp, m);
     return output;
 }
 

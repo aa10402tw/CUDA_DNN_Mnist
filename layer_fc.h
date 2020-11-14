@@ -15,34 +15,41 @@ class Layer_fc;
 
 class Layer_fc{
 public:
+    // Define layer structure and activiation function
     int in_features;
     int out_features;
     ActivationFunction* activation;
 
+    // Layer weight and bias
+    GpuMat *weight;
+    GpuMat *bias;
+
+    // Record input, output before activation and output for compute gradient 
+    GpuMat *input;
+    GpuMat *preAct;
+    GpuMat *output;
+
+    // Gradient for weight and bias
+    GpuMat *delta;
+    GpuMat *last_grad_w;
+    GpuMat *last_grad_b;
+    GpuMat *grad_weight;
+    GpuMat *grad_bias;
+
+    // Record number of sample passed (to average gradient)
     unsigned int n_samples;
-    gpuMat *bias;
-    gpuMat *weight;
 
-    gpuMat *input;
-    gpuMat *preAct;
-    gpuMat *output;
-
-    gpuMat *delta;
-    gpuMat *grad_bias;
-    gpuMat *grad_weight;
-
-    // Momentum
-    gpuMat *last_grad_b;
-    gpuMat *last_grad_w;
-
+    // Constructor and Destructor
     Layer_fc(int in_features, int out_features);
     Layer_fc(int in_features, int out_features, ActivationFunction* activation);
     ~Layer_fc();
 
-    gpuMat* forwardPass(const gpuMat *input);
-    void backProp(const gpuMat* delta_out);
+    // Forward-pass, Back-propgation, and Update-weight functions 
+    GpuMat* forwardPass(const GpuMat *input);
+    void backProp(const GpuMat* dLoss); // For last layer
     void backProp(Layer_fc *next_layer);
     void update(float lr);
+    void reset_grad();
 };
 
 #endif

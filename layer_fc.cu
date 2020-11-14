@@ -7,28 +7,30 @@
 #include <vector>
 #include <iostream>
 
+#define momentum 0.9
+
 // Constructor
 Layer_fc::Layer_fc(int in_features, int out_features) {
     this->in_features = in_features;
     this->out_features = out_features;
-    this->activation = new Act_ReLU();
+    this->activation = new Act_NONE();
 
     n_samples = 0;
 
-    bias = new gpuMat(out_features, 1, 1);
-    weight = new gpuMat(out_features, in_features, 1);
+    bias = new GpuMat(out_features, 1, 1);
+    weight = new GpuMat(out_features, in_features, 1);
 
-    input = new gpuMat();
-    preAct = new gpuMat();
-    output = new gpuMat();
+    input = new GpuMat();
+    preAct = new GpuMat();
+    output = new GpuMat();
 
-    delta = new gpuMat(out_features, 1, 1);
-    grad_bias = new gpuMat(out_features, 1, 1);
-    grad_weight = new gpuMat(out_features, in_features, 1);
-    last_grad_b = new gpuMat(out_features, 1, 1);
-    last_grad_w = new gpuMat(out_features, in_features, 1);
+    delta = new GpuMat(out_features, 1, 1);
+    grad_bias = new GpuMat(out_features, 1, 1);
+    grad_weight = new GpuMat(out_features, in_features, 1);
+    last_grad_b = new GpuMat(out_features, 1, 1);
+    last_grad_w = new GpuMat(out_features, in_features, 1);
 
-    /* Init weight and bias */
+    // Random Init weight and bias 
     bias->randn();
     weight->randn();
 }
@@ -38,47 +40,56 @@ Layer_fc::Layer_fc(int in_features, int out_features, ActivationFunction* activa
     this->out_features = out_features;
     this->activation = activation;
 
-    bias = new gpuMat(out_features, 1, 1);
-    weight = new gpuMat(out_features, in_features, 1);
+    n_samples = 0;
 
-    input = new gpuMat();
-    preAct = new gpuMat();
-    output = new gpuMat();
+    bias = new GpuMat(out_features, 1, 1);
+    weight = new GpuMat(out_features, in_features, 1);
 
-    delta = new gpuMat(out_features, 1, 1);
-    grad_bias = new gpuMat(out_features, 1, 1);
-    grad_weight = new gpuMat(out_features, in_features, 1);
-    last_grad_b = new gpuMat(out_features, 1, 1);
-    last_grad_w = new gpuMat(out_features, in_features, 1);
+    input = new GpuMat();
+    preAct = new GpuMat();
+    output = new GpuMat();
 
-    /* Init weight and bias */
+    delta = new GpuMat(out_features, 1, 1);
+    grad_bias = new GpuMat(out_features, 1, 1);
+    grad_weight = new GpuMat(out_features, in_features, 1);
+    last_grad_b = new GpuMat(out_features, 1, 1);
+    last_grad_w = new GpuMat(out_features, in_features, 1);
+
+    // Random Init weight and bias 
     bias->randn();
     weight->randn();
 }
 
 // Destructor
 Layer_fc::~Layer_fc() {
-    bias->release();
     weight->release();
-
+    bias->release();
+    
+    input->release();
+    preAct->release();
     output->release();
-    grad_bias->release();
+
+    delta->release();
+    last_grad_w->release();
+    last_grad_b->release();
     grad_weight->release();
+    grad_bias->release();
 }
 
-gpuMat* Layer_fc::forwardPass(const gpuMat *_input) {
-    n_samples += 1;
+// Forward Pass function
+GpuMat* Layer_fc::forwardPass(const GpuMat *_input) {
     if (_input->Data == nullptr) {
-        std::cout << "Null Input";
+        std::cout << "Invalid Input (NULL) for forward pass";
         exit(0);
     }
+    
     // Release last round data
     input->release();
     preAct->release();
     output->release();
 
-    input = new gpuMat(*_input);
-    gpuMat *Wx = MatMul(weight, input);
+    input = GpuMat::copy(_input);
+    GpuMat *Wx = MatMul(weight, input);
     preAct = MatAdd(Wx, bias);
     output = activation->forwardPass(preAct);
 
@@ -88,107 +99,152 @@ gpuMat* Layer_fc::forwardPass(const gpuMat *_input) {
     return output;
 }
 
-
-void Layer_fc::backProp(const gpuMat* delta_out) {
-    // Compute delta function
-    gpuMat* dPreAct = activation->derivative(preAct);
-    delta = MatEleMul(delta_out, dPreAct);
-
-    // grad_w = delta * input^T, grad_b = delta
-    gpuMat* input_t = Transpose(input);
-    gpuMat* new_grad_w = MatMul(delta, input_t);
-    gpuMat* new_grad_b = new gpuMat(*delta);
-    if (grad_weight->Data == nullptr) {
-        grad_weight = new gpuMat(weight->rows, weight->cols, weight->channels);
+// Back propgation function for the last layer
+void Layer_fc::backProp(const GpuMat* dLoss) {
+    if (dLoss->Data == nullptr) {
+        std::cout << "Invalid dLoss (NULL) for back-propgation";
+        exit(0);
     }
-    if (grad_bias->Data == nullptr) {
-        grad_bias = new gpuMat(bias->rows, bias->cols, bias->channels);
+    // Release last round data 
+    delta->release();
+
+    // Compute delta function [delta = dLoss x dF]
+    GpuMat* dPreAct = activation->derivative(preAct);
+    delta = MatEleMul(dLoss, dPreAct);
+
+    // Compute gradient for weight and bias [grad_w = delta * input^T], [grad_b = delta]
+    GpuMat* input_t = Transpose(input);
+    GpuMat* new_grad_w = MatMul(delta, input_t);
+    GpuMat* new_grad_b = GpuMat::copy(delta);
+
+    if (n_samples == 0) {
+        // If is the first sample, simply assign new gradient
+        grad_weight->release();
+        grad_bias->release();
+        grad_weight = GpuMat::copy(new_grad_w);
+        grad_bias = GpuMat::copy(new_grad_b);
+    }
+    else{
+        // Else accumulate the gradient
+        GpuMat* acc_grad_w = MatAdd(grad_weight, new_grad_w);
+        GpuMat* acc_grad_b = MatAdd(grad_bias, new_grad_b);
+        cudaMemcpy(grad_weight->Data, acc_grad_w->Data, grad_weight->getSize() * sizeof(float), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(grad_bias->Data, acc_grad_b->Data, grad_bias->getSize() * sizeof(float), cudaMemcpyDeviceToDevice);
+        acc_grad_w->release();
+        acc_grad_b->release();
     }
 
-    gpuMat* acc_grad_w = MatAdd(grad_weight, new_grad_w);
-    gpuMat* acc_grad_b = MatAdd(grad_bias, new_grad_b);
-
-    cudaMemcpy(grad_weight->Data, acc_grad_w->Data, grad_weight->getSize() * sizeof(float), cudaMemcpyDeviceToDevice);
-    cudaMemcpy(grad_bias->Data, acc_grad_b->Data, grad_bias->getSize() * sizeof(float), cudaMemcpyDeviceToDevice);
+    // Add sample number
+    n_samples += 1;
 
     // Release tmp data
     dPreAct->release();
     input_t->release();
     new_grad_w->release();
     new_grad_b->release();
-    acc_grad_w->release();
-    acc_grad_b->release();
 }
 
+// Back propgation function
 void Layer_fc::backProp(Layer_fc *next_layer) {
-    // Compute delta function
-    gpuMat* w_next_t = Transpose(next_layer->weight);
-    gpuMat* delta_next = next_layer->delta;
+    if (next_layer->delta == nullptr) {
+        std::cout << "Invalid delta_next (NULL) for back-propgation";
+        exit(0);
+    }
+    // Release last round data 
+    delta->release();
 
-    gpuMat* next_w_delta = MatMul(w_next_t, delta_next);
-    gpuMat* dPreAct = activation->derivative(preAct);
+    // Compute delta function
+    GpuMat* w_next_t = Transpose(next_layer->weight);
+    GpuMat* delta_next = GpuMat::copy(next_layer->delta);
+
+    GpuMat* next_w_delta = MatMul(w_next_t, delta_next);
+    GpuMat* dPreAct = activation->derivative(preAct);
     delta = MatEleMul(next_w_delta, dPreAct);
 
-    // grad_w = delta * input^T, grad_b = delta
-    if (grad_weight->Data == nullptr) {
-        grad_weight = new gpuMat(weight->rows, weight->cols, weight->channels);
+    // Compute gradient for weight and bias [grad_w = delta * input^T], [grad_b = delta]
+    GpuMat* input_t = Transpose(input);
+    GpuMat* new_grad_w = MatMul(delta, input_t);
+    GpuMat* new_grad_b = GpuMat::copy(delta);
+
+    if (n_samples == 0) {
+        // If is the first sample, simply assign new gradient
+        grad_weight->release();
+        grad_bias->release();
+        grad_weight = GpuMat::copy(new_grad_w);
+        grad_bias = GpuMat::copy(new_grad_b);
     }
-    if (grad_bias->Data == nullptr) {
-        grad_bias = new gpuMat(bias->rows, bias->cols, bias->channels);
+    else{
+        // Else accumulate the gradient
+        GpuMat* acc_grad_w = MatAdd(grad_weight, new_grad_w);
+        GpuMat* acc_grad_b = MatAdd(grad_bias, new_grad_b);
+        cudaMemcpy(grad_weight->Data, acc_grad_w->Data, grad_weight->getSize() * sizeof(float), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(grad_bias->Data, acc_grad_b->Data, grad_bias->getSize() * sizeof(float), cudaMemcpyDeviceToDevice);
+        acc_grad_w->release();
+        acc_grad_b->release();
     }
-    gpuMat* input_t = Transpose(input);
-    gpuMat* new_grad_w = MatMul(delta, input_t);
-    gpuMat* new_grad_b = new gpuMat(*delta);
-    gpuMat* acc_grad_w = MatAdd(grad_weight, new_grad_w);
-    gpuMat* acc_grad_b = MatAdd(grad_bias, new_grad_b);
-    cudaMemcpy(grad_weight->Data, acc_grad_w->Data, grad_weight->getSize() * sizeof(float), cudaMemcpyDeviceToDevice);
-    cudaMemcpy(grad_bias->Data, acc_grad_b->Data, grad_bias->getSize() * sizeof(float), cudaMemcpyDeviceToDevice);
+
+    // Add sample number
+    n_samples += 1;
 
     // Release tmp data
-    input_t->release();
-    new_grad_w->release();
-    new_grad_b->release();
-    acc_grad_w->release();
-    acc_grad_b->release();
+    dPreAct->release();
     w_next_t->release();
     delta_next->release();
-    next_layer->delta->release();
     next_w_delta->release();
-    dPreAct->release();
+    new_grad_w->release();
+    input_t->release();
+    new_grad_b->release();
 }
 
+// Update the weight of layer
 void Layer_fc::update(float lr) {
+    if (n_samples == 0  || grad_weight->Data == nullptr || grad_bias->Data == nullptr) {
+        std::cout << "Invalid gradient for update";
+        exit(0);
+    }
 
-    // weight = MatSub(weight, MatEleMul(grad_weight, lr))
-    gpuMat* new_grad_w = MatEleMul(grad_weight, lr/n_samples);
-    gpuMat* a_last_grad_w = MatEleMul(last_grad_w, 0.9);
-    gpuMat* b_new_grad_w = MatEleMul(new_grad_w, 0.1);
-    gpuMat* grad_w = MatAdd(a_last_grad_w, b_new_grad_w);
-    gpuMat* new_w = MatSub(weight, grad_w);
+    // Update weight [new_w = w - lr*grad_w] using momentum [grad_w = a*last_grad_w+(1-a)*new_grad_w] 
+    GpuMat* a_last_grad_w = MatEleMul(last_grad_w, momentum);
+    GpuMat* new_grad_w = MatEleDiv(grad_weight, (float)n_samples); // average gradient
+    GpuMat* b_new_grad_w = MatEleMul(new_grad_w, (1-momentum)); 
+    GpuMat* grad_w = MatAdd(a_last_grad_w, b_new_grad_w);
+    GpuMat* step_w = MatEleMul(grad_w, lr);
+    GpuMat* new_w = MatSub(weight, step_w);
     cudaMemcpy(weight->Data, new_w->Data, weight->getSize() * sizeof(float), cudaMemcpyDeviceToDevice);
     cudaMemcpy(last_grad_w->Data, grad_w->Data, last_grad_w->getSize() * sizeof(float), cudaMemcpyDeviceToDevice);
 
-    //bias = MatSub(bias, MatEleMul(grad_bias, lr))
-    gpuMat* new_grad_b = MatEleMul(grad_bias, lr/n_samples);
-    gpuMat* a_last_grad_b = MatEleMul(last_grad_b, 0.9);
-    gpuMat* b_new_grad_b = MatEleMul(new_grad_b, 0.1);
-    gpuMat* grad_b = MatAdd(a_last_grad_b, b_new_grad_b);
-    gpuMat* new_b = MatSub(bias, grad_b);
+    // Update bias [new_b = b - lr*grad_b] using momentum [grad_b = a*last_grad_b+(1-a)*new_grad_b] 
+    GpuMat* a_last_grad_b = MatEleMul(last_grad_b, momentum);
+    GpuMat* new_grad_b = MatEleDiv(grad_bias, (float)n_samples); // average gradient
+    GpuMat* b_new_grad_b = MatEleMul(new_grad_b, (1-momentum)); 
+    GpuMat* grad_b = MatAdd(a_last_grad_b, b_new_grad_b);
+    GpuMat* step_b = MatEleMul(grad_b, lr);
+    GpuMat* new_b = MatSub(bias, step_b);
     cudaMemcpy(bias->Data, new_b->Data, bias->getSize() * sizeof(float), cudaMemcpyDeviceToDevice);
     cudaMemcpy(last_grad_b->Data, grad_b->Data, last_grad_b->getSize() * sizeof(float), cudaMemcpyDeviceToDevice);
 
-    // Release tmp data
-    new_grad_w->release();
+    // Release tmp data for compute weight
     a_last_grad_w->release();
+    new_grad_w->release();
     b_new_grad_w->release();
     grad_w->release();
+    step_w->release();
     new_w->release();
-    new_grad_b->release();
+
+    // Release tmp data for compute bias
     a_last_grad_b->release();
+    new_grad_b->release();
     b_new_grad_b->release();
     grad_b->release();
+    step_b->release();
     new_b->release();
 
+    // Release iteration data
+    reset_grad();
+}
+
+// Reset the gradient and clear iteration variable
+void Layer_fc::reset_grad() {
     // Release iteration data
     input->release();
     preAct->release();
@@ -197,7 +253,6 @@ void Layer_fc::update(float lr) {
     grad_weight->release();
     delta->release();
     n_samples=0;
-
 }
 
 

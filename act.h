@@ -4,37 +4,41 @@
 #ifndef ACT_H
 #define ACT_H
 
-// Abstract Class
+// Abstract Class for activation function
 class ActivationFunction{
 public:
-    virtual gpuMat* forwardPass(gpuMat *preAct) = 0;
-    virtual gpuMat* derivative(gpuMat *preAct) = 0;
+    virtual GpuMat* forwardPass(GpuMat *preAct) = 0;
+    virtual GpuMat* derivative(GpuMat *preAct) = 0;
 };
 
+
+// Sigmoid Activation function
 class Act_Sigmoid: public ActivationFunction {
 public:
-    gpuMat* forwardPass(gpuMat *preAct) override;
-    gpuMat* derivative(gpuMat *preAct) override;
+    GpuMat* forwardPass(GpuMat *preAct) override;
+    GpuMat* derivative(GpuMat *preAct) override;
 };
 
+// ReLU Activation function
 class Act_ReLU: public ActivationFunction {
 public:
-    gpuMat* forwardPass(gpuMat *preAct) override;
-    gpuMat* derivative(gpuMat *preAct) override;
+    GpuMat* forwardPass(GpuMat *preAct) override;
+    GpuMat* derivative(GpuMat *preAct) override;
 };
 
+// No Activation function (usually for last layer)
 class Act_NONE: public ActivationFunction {
 public:
-    gpuMat* forwardPass(gpuMat *preAct) override;
-    gpuMat* derivative(gpuMat *preAct) override;
+    GpuMat* forwardPass(GpuMat *preAct) override;
+    GpuMat* derivative(GpuMat *preAct) override;
 };
 
 
 /*
 class Act_Softmax: public ActivationFunction {
 public:
-    gpuMat* forwardPass(gpuMat *preAct) override;
-    gpuMat* derivative(gpuMat *preAct) override;
+    GpuMat* forwardPass(GpuMat *preAct) override;
+    GpuMat* derivative(GpuMat *preAct) override;
 };
 */
 

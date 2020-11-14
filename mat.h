@@ -1,19 +1,18 @@
-
 #ifndef MAT_H
 #define MAT_H
 
-class gpuMat;
-class cpuMat;
+class GpuMat;
+class CpuMat;
 
-class gpuMat {
+// Matrix class that operate data in GPU
+class GpuMat {
 public:
     /* Constructor and Destructor */
-    gpuMat();
-    gpuMat(int h, int w, int c);
-    gpuMat(const gpuMat&);
-    gpuMat(const cpuMat&);
-    ~gpuMat();
-
+    GpuMat();
+    GpuMat(int h, int w, int c);
+    GpuMat(const GpuMat&);
+    GpuMat(const CpuMat&);
+    ~GpuMat();
 
     /* Member data */
     int cols;
@@ -22,29 +21,32 @@ public:
     float *Data;
 
     /* Utils function */
-    static gpuMat* ones(int rows, int cols, int channels);
-    void copyTo(gpuMat &m);
+    static GpuMat* zeros(int rows, int cols, int channels);
+    static GpuMat* ones(int rows, int cols, int channels);
+    static GpuMat* copy(const CpuMat* A);
+    static GpuMat* copy(const GpuMat* A);
+    void copyTo(GpuMat &m);
     void release();
     void mallocDevice();
     void randn();
     int getSize() const;
     void print() const;
-    void printVec() const;
     void print(int verbose) const;
+    void printVec() const;
     void printSize() const;
 };
 
-void assign_gpuMat(gpuMat* dst, gpuMat* src);
+void assign_gpuMat(GpuMat* dst, GpuMat* src);
 
-
-class cpuMat {
+// Matrix class that operate data in CPU
+class CpuMat {
 public:
     /* Constructor and Destructor */
-    cpuMat();
-    cpuMat(int h, int w, int c);
-    cpuMat(const gpuMat&);
-    cpuMat(const cpuMat&);
-    ~cpuMat();
+    CpuMat();
+    CpuMat(int h, int w, int c);
+    CpuMat(const GpuMat&);
+    CpuMat(const CpuMat&);
+    ~CpuMat();
 
     /* Member data */
     int cols;
@@ -53,13 +55,16 @@ public:
     float *Data;
 
     /* Utils function */
-    static cpuMat* ones(int rows, int cols, int channels);
+    static CpuMat* zeros(int rows, int cols, int channels);
+    static CpuMat* ones(int rows, int cols, int channels);
+    static CpuMat* copy(const CpuMat* A);
+    static CpuMat* copy(const GpuMat* A);
     void release();
     void mallocHost();
     void randn();
     int getSize() const;
     void printVec() const;
-    void print();
+    void print() const;
     void printSize() const;
 };
 

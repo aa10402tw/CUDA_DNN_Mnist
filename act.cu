@@ -2,26 +2,34 @@
 #include "mat_math.h"
 #include "act.h"
 
-
-gpuMat* Act_Sigmoid::forwardPass(gpuMat *preAct){
+////////////////
+/// Sigmoid  ///
+////////////////
+GpuMat* Act_Sigmoid::forwardPass(GpuMat *preAct){
     return Sigmoid(preAct);
 }
-gpuMat* Act_Sigmoid::derivative(gpuMat *preAct){
+GpuMat* Act_Sigmoid::derivative(GpuMat *preAct){
     return dSigmoid(preAct);
 }
 
-gpuMat* Act_ReLU::forwardPass(gpuMat *preAct){
+
+////////////
+/// ReLU ///
+////////////
+GpuMat* Act_ReLU::forwardPass(GpuMat *preAct){
     return ReLU(preAct);
 }
-gpuMat* Act_ReLU::derivative(gpuMat *preAct){
+GpuMat* Act_ReLU::derivative(GpuMat *preAct){
     return dReLU(preAct);
 }
 
-
-gpuMat* Act_NONE::forwardPass(gpuMat *preAct){
-    return new gpuMat(*preAct);
+////////////
+/// None ///
+////////////
+GpuMat* Act_NONE::forwardPass(GpuMat *preAct){
+    return GpuMat::copy(preAct);
 }
-gpuMat* Act_NONE::derivative(gpuMat *preAct){
-    return gpuMat::ones(preAct->rows, preAct->cols, preAct->channels);
+GpuMat* Act_NONE::derivative(GpuMat *preAct){
+    return GpuMat::ones(preAct->rows, preAct->cols, preAct->channels);
 }
 

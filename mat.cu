@@ -5,15 +5,17 @@
 using namespace std;
 
 
-// GPU Mat
-gpuMat::gpuMat(){
+///////////////////////
+/// GpuMat Function ///
+///////////////////////
+GpuMat::GpuMat(){
 	rows = 0;
 	cols = 0;
 	channels = 0;
 	Data = NULL;
 }
 
-gpuMat::gpuMat(int h, int w, int c) {
+GpuMat::GpuMat(int h, int w, int c) {
     cols = w;
     rows = h;
     channels = c;
@@ -21,7 +23,7 @@ gpuMat::gpuMat(int h, int w, int c) {
     mallocDevice();
 }
 
-gpuMat::gpuMat(const gpuMat &m) {
+GpuMat::GpuMat(const GpuMat &m) {
     cols = m.cols;
     rows = m.rows;
     channels = m.channels;
@@ -31,7 +33,7 @@ gpuMat::gpuMat(const gpuMat &m) {
 }
 
 
-gpuMat::gpuMat(const cpuMat &m){
+GpuMat::GpuMat(const CpuMat &m){
     cols = m.cols;
     rows = m.rows;
     channels = m.channels;
@@ -40,7 +42,15 @@ gpuMat::gpuMat(const cpuMat &m){
     cudaMemcpy(Data, m.Data, getSize() * sizeof(float), cudaMemcpyHostToDevice);
 }
 
-void gpuMat::copyTo(gpuMat &m) {
+GpuMat* GpuMat::copy(const CpuMat* A) {
+    return new GpuMat(*A);
+}
+
+GpuMat* GpuMat::copy(const GpuMat* A) {
+    return new GpuMat(*A);
+}
+
+void GpuMat::copyTo(GpuMat &m) {
     cols = m.cols;
     rows = m.rows;
     channels = m.channels;
@@ -49,49 +59,56 @@ void gpuMat::copyTo(gpuMat &m) {
     cudaMemcpy(Data, m.Data, getSize() * sizeof(float), cudaMemcpyHostToDevice);
 }
 
-gpuMat::~gpuMat(){
+GpuMat::~GpuMat(){
     cudaFree(Data);
 }
 
-int gpuMat::getSize() const{
+int GpuMat::getSize() const{
     return rows * cols * channels;
 }
 
-void gpuMat::mallocDevice() {
+void GpuMat::mallocDevice() {
     if (Data==NULL) {
         cudaMalloc(&Data, sizeof(float) * getSize());
 		cudaMemset(Data, 0, sizeof(float) * getSize());
     }
 }
 
-void gpuMat::release() {
+void GpuMat::release() {
     if (Data != NULL)
         cudaFree(Data);
     rows = cols = channels = 0;
     Data = nullptr;
 }
 
-void gpuMat::randn() {
+void GpuMat::randn() {
     if (Data != nullptr) {
-        cpuMat cm(*this);
+        CpuMat cm(*this);
         cm.randn();
         cudaMemcpy(Data, cm.Data, getSize() * sizeof(float), cudaMemcpyHostToDevice);
     }
 }
 
-gpuMat* gpuMat::ones(int rows, int cols, int channels) {
-    cpuMat* cm = cpuMat::ones(rows, cols, channels);
-    gpuMat* gm = new gpuMat(*cm);
+
+GpuMat* GpuMat::zeros(int rows, int cols, int channels) {
+    CpuMat* cm = CpuMat::zeros(rows, cols, channels);
+    GpuMat* gm = GpuMat::copy(cm);
     return gm;
 }
 
-void gpuMat::print() const{
+GpuMat* GpuMat::ones(int rows, int cols, int channels) {
+    CpuMat* cm = CpuMat::ones(rows, cols, channels);
+    GpuMat* gm = GpuMat::copy(cm);
+    return gm;
+}
+
+void GpuMat::print() const{
     int default_verbose = 0;
     print(default_verbose);
 }
 
-void gpuMat::printVec() const {
-    cpuMat cm(*this);
+void GpuMat::printVec() const {
+    CpuMat cm(*this);
     cout<< setprecision(3) << setiosflags(ios::fixed);
     cout << "[";
     for (int c=0; c < getSize(); c++) {
@@ -105,10 +122,10 @@ void gpuMat::printVec() const {
     cout << endl;
 }
 
-void gpuMat::print(int verbose) const {
+void GpuMat::print(int verbose) const {
     if(verbose > 1)
         std::cout<<"[GPU Matrix] with "<<channels<<" channels, "<<rows<<" rows, "<<cols<<" columns."<<std::endl;
-    cpuMat cm(*this);
+    CpuMat cm(*this);
     int cnt = 0;
     for (int c=0; c<channels; c++) {
         if(verbose > 0)
@@ -124,26 +141,29 @@ void gpuMat::print(int verbose) const {
 }
 
 
-void gpuMat::printSize() const {
+void GpuMat::printSize() const {
     std::cout<<"("<<channels<<","<<rows<<","<<cols<<")";
 }
 
 
-void assign_gpuMat(gpuMat* dst, gpuMat* src) {
+void assign_GpuMat(GpuMat* dst, GpuMat* src) {
     dst->release();
     src->copyTo(*dst);
 }
 
 
-// CPU Mat
-cpuMat::cpuMat(){
+
+///////////////////////
+/// CpuMat Function ///
+///////////////////////
+CpuMat::CpuMat(){
 	rows = 0;
 	cols = 0;
 	channels = 0;
 	Data = NULL;
 }
 
-cpuMat::cpuMat(int h, int w, int c) {
+CpuMat::CpuMat(int h, int w, int c) {
     cols = w;
     rows = h;
     channels = c;
@@ -151,7 +171,7 @@ cpuMat::cpuMat(int h, int w, int c) {
     mallocHost();
 }
 
-cpuMat::cpuMat(const cpuMat &m) {
+CpuMat::CpuMat(const CpuMat &m) {
     cols = m.cols;
     rows = m.rows;
     channels = m.channels;
@@ -160,7 +180,7 @@ cpuMat::cpuMat(const cpuMat &m) {
     memcpy(Data, m.Data, getSize() * sizeof(float));
 }
 
-cpuMat::cpuMat(const gpuMat &m) {
+CpuMat::CpuMat(const GpuMat &m) {
     cols = m.cols;
     rows = m.rows;
     channels = m.channels;
@@ -169,12 +189,21 @@ cpuMat::cpuMat(const gpuMat &m) {
     cudaMemcpy(Data, m.Data, getSize() * sizeof(float), cudaMemcpyDeviceToHost);
 }
 
-cpuMat::~cpuMat(){
+CpuMat::~CpuMat(){
     free(Data);
 }
 
-cpuMat* cpuMat::ones(int rows, int cols, int channels) {
-    cpuMat* cm = new cpuMat(rows, cols, channels);
+CpuMat* CpuMat::zeros(int rows, int cols, int channels) {
+    CpuMat* cm = new CpuMat(rows, cols, channels);
+    int size = cm->getSize();
+    for (int idx=0; idx<size; idx++) {
+        cm->Data[idx] = 0.0;
+    }
+    return cm;
+}
+
+CpuMat* CpuMat::ones(int rows, int cols, int channels) {
+    CpuMat* cm = new CpuMat(rows, cols, channels);
     int size = cm->getSize();
     for (int idx=0; idx<size; idx++) {
         cm->Data[idx] = 1.0;
@@ -182,11 +211,19 @@ cpuMat* cpuMat::ones(int rows, int cols, int channels) {
     return cm;
 }
 
-int cpuMat::getSize() const{
+CpuMat* CpuMat::copy(const CpuMat* A) {
+    return new CpuMat(*A);
+}
+
+CpuMat* CpuMat::copy(const GpuMat* A) {
+    return new CpuMat(*A);
+}
+
+int CpuMat::getSize() const{
     return rows * cols * channels;
 }
 
-void cpuMat::mallocHost() {
+void CpuMat::mallocHost() {
     if (Data==NULL) {
         Data = (float*) malloc(sizeof(float) * getSize());
 		if(NULL == Data) {
@@ -197,14 +234,14 @@ void cpuMat::mallocHost() {
     }
 }
 
-void cpuMat::release() {
+void CpuMat::release() {
     if (Data != NULL)
         free(Data);
     rows = cols = channels = 0;
     Data = nullptr;
 }
 
-void cpuMat::randn() {
+void CpuMat::randn() {
     if (Data != nullptr) {
         int i = 0;
         while (i < getSize()) {
@@ -214,7 +251,7 @@ void cpuMat::randn() {
     }
 }
 
-void cpuMat::print() {
+void CpuMat::print() const{
     std::cout<<"[CPU Matrix] with "<<channels<<" channels, "<<rows<<" rows, "<<cols<<" columns."<<std::endl;
     int cnt = 0;
     for (int c=0; c<channels; c++) {
@@ -229,8 +266,8 @@ void cpuMat::print() {
     }
 }
 
-void cpuMat::printVec() const {
-    cpuMat cm(*this);
+void CpuMat::printVec() const {
+    CpuMat cm(*this);
     cout<< setprecision(3) << setiosflags(ios::fixed);
     cout << "[";
     for (int c=0; c < getSize(); c++) {
@@ -244,7 +281,7 @@ void cpuMat::printVec() const {
     cout << endl;
 }
 
-void cpuMat::printSize() const {
+void CpuMat::printSize() const {
     std::cout<<"("<<channels<<","<<rows<<","<<cols<<")";
 }
 

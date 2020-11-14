@@ -1,6 +1,7 @@
+#include "mat.h"
+
 #ifndef MAT_MATH_H
 #define MAT_MATH_H
-
 
 __global__ void cuda_MatMul(const float* A, const float* B, float* C,
                        int ARows, int ACols,
@@ -11,13 +12,13 @@ __global__ void cuda_MatAdd(const float* A, const float* B, float* C, int n);
 
 __global__ void cuda_MatSub(const float* A, const float* B, float* C, int n);
 
-__global__ void cuda_MatExp(const float* src, float* dst, int n);
-
-__global__ void cuda_Transpose(const float* src, float* dst, int srcCols, int dstCols, int n);
-
 __global__ void cuda_MatEleMul(const float* A, const float* B, float* C, int n);
 
 __global__ void cuda_MatEleMul(const float* A, const float m, float* B, int n);
+
+__global__ void cuda_Transpose(const float* src, float* dst, int srcCols, int dstCols, int n);
+
+__global__ void cuda_MatExp(const float* src, float* dst, int n);
 
 __global__ void cuda_ReLU(const float* src, float* dst, int n);
 
@@ -28,29 +29,30 @@ __global__ void cuda_Sigmoid(const float* src, float* dst, int n);
 __global__ void cuda_dSigmoid(const float* src, float* dst, int n);
 
 
-gpuMat* MatMul(const gpuMat* A, const gpuMat* B);
+GpuMat* MatMul(const GpuMat* A, const GpuMat* B);
 
-gpuMat* MatAdd(const gpuMat* A, const gpuMat* B);
+GpuMat* MatAdd(const GpuMat* A, const GpuMat* B);
 
-gpuMat* MatSub(const gpuMat* A, const gpuMat* B);
+GpuMat* MatSub(const GpuMat* A, const GpuMat* B);
 
-gpuMat* MatExp(const gpuMat* A);
+GpuMat* MatEleMul(const GpuMat* A, const GpuMat* B);
 
-gpuMat* MatEleMul(const gpuMat* A, const gpuMat* B);
+GpuMat* MatEleMul(const GpuMat* A, float m);
 
-gpuMat* MatEleMul(const gpuMat* A, float m);
+GpuMat* MatEleDiv(const GpuMat* A, float m);
 
-gpuMat* Transpose(const gpuMat* A);
+GpuMat* Transpose(const GpuMat* A);
 
+GpuMat* MatExp(const GpuMat* A);
 
-gpuMat* Sigmoid(const gpuMat* A);
+GpuMat* Sigmoid(const GpuMat* A);
 
-gpuMat* dSigmoid(const gpuMat* A);
+GpuMat* dSigmoid(const GpuMat* A);
 
-gpuMat* ReLU(const gpuMat* A);
+GpuMat* ReLU(const GpuMat* A);
 
-gpuMat* dReLU(const gpuMat* A);
+GpuMat* dReLU(const GpuMat* A);
 
-gpuMat* softmax(const gpuMat *input);
+GpuMat* softmax(const GpuMat *input);
 
 #endif // MAT_MATH_H
