@@ -232,21 +232,7 @@ int main() {
     int batch_size = 1;
     float lr = 0.01;
     int log_intervel = 10000 / batch_size;
-    int epochs = 5;
-
-    // Training the network
-    for (int i=0; i<epochs; i++)
-        train(net, batch_size, lr, log_intervel);
-
-    // Test the network
-    test(net);
-
-    // Training the network
-    for (int i=0; i<epochs; i++)
-        train(net, batch_size, lr, log_intervel);
-
-    // Test the network
-    test(net);
+    int epochs = 3;
 
     // Training the network
     for (int i=0; i<epochs; i++)
