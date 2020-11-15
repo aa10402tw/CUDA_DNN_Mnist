@@ -245,7 +245,7 @@ void CpuMat::randn() {
     if (Data != nullptr) {
         int i = 0;
         while (i < getSize()) {
-            Data[i] = 0.5f - float(rand()) / float(RAND_MAX);
+            Data[i] = (0.5f - float(rand()) / float(RAND_MAX))/10.0;
             i += 1;
         }
     }

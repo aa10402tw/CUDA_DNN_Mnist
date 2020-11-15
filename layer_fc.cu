@@ -31,7 +31,6 @@ Layer_fc::Layer_fc(int in_features, int out_features) {
     last_grad_w = new GpuMat(out_features, in_features, 1);
 
     // Random Init weight and bias 
-    bias->randn();
     weight->randn();
 }
 
@@ -56,7 +55,6 @@ Layer_fc::Layer_fc(int in_features, int out_features, ActivationFunction* activa
     last_grad_w = new GpuMat(out_features, in_features, 1);
 
     // Random Init weight and bias 
-    bias->randn();
     weight->randn();
 }
 

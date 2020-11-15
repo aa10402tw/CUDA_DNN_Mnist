@@ -1,4 +1,4 @@
-
+Compile and execute
 ```
 nvcc mat.cu mat_math.cu act.cu layer_fc.cu main.cu -o main
 main.exe
@@ -34,3 +34,7 @@ int main() {
     test(net);
 }
 ```
+
+Result <br/>
+Train acc: 96.82% <br/>
+Test acc: 96.57% <br/>
