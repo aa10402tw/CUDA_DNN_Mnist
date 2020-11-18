@@ -93,12 +93,14 @@ void GpuMat::randn() {
 GpuMat* GpuMat::zeros(int rows, int cols, int channels) {
     CpuMat* cm = CpuMat::zeros(rows, cols, channels);
     GpuMat* gm = GpuMat::copy(cm);
+    delete cm;
     return gm;
 }
 
 GpuMat* GpuMat::ones(int rows, int cols, int channels) {
     CpuMat* cm = CpuMat::ones(rows, cols, channels);
     GpuMat* gm = GpuMat::copy(cm);
+    delete cm;
     return gm;
 }
 

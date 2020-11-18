@@ -51,14 +51,21 @@ void PrintNet(std::vector<Layer_fc*> &net) {
 
 // Compute the deriviate of CrossEntropyLoss [dCE(y_pred, y_true) = y_pred - y_true]
 GpuMat* dCrossEntropyLoss(const GpuMat *output, const GpuMat* target) {
-    return MatSub(softmax(output), target);
+    GpuMat* smax = softmax(output);
+    GpuMat* result = MatSub(smax, target);
+    delete smax;
+    return result;
 }
 
 // CrossEntropyLoss [dCE(y_pred, y_true) = -log(y_pred[idx]) for correct idx]
 float crossEntropyLoss(GpuMat* output, GpuMat* target) {
-    CpuMat* sm = new CpuMat(*softmax(output));
+    GpuMat* smax = softmax(output);
+    CpuMat* sm = CpuMat::copy(smax);
     int idx = argmax(new CpuMat(*target));
-    return -log (sm->Data[idx]);
+    float result = -log (sm->Data[idx]);
+    delete smax;
+    delete sm;
+    return result;
 }
 
 // Print the image label and data 
@@ -83,14 +90,18 @@ GpuMat* imgToInput(MNIST_DATA_TYPE data[28][28]) {
     for (int i=0; i<28; i++)
         for (int j=0; j<28; j++)
             input_cpu->Data[i*28+j] = data[i][j];
-    return new GpuMat(*input_cpu);
+    GpuMat* input = GpuMat::copy(input_cpu);
+    delete input_cpu;
+    return input;
 }
 
 // Convert the unsigned int label to onehot vector
 GpuMat* labelToTarget(unsigned int label) {
     CpuMat* target_cpu = new CpuMat(10, 1, 1);
     target_cpu->Data[label] = 1.0;
-    return new GpuMat(*target_cpu);
+    GpuMat* target = GpuMat::copy(target_cpu);
+    delete target_cpu;
+    return target;
 }
 
 // Get the argmax (index of max value) of onehot vector
@@ -108,19 +119,27 @@ int argmax(CpuMat* onehot) {
 
 // Return true if y_pred = y_true 
 bool isCorrect(const GpuMat* output, const GpuMat* target) {
-    int y_pred = argmax(new CpuMat(*output));
-    int y_true = argmax(new CpuMat(*target));
+    CpuMat* output_cpu = CpuMat::copy(output);
+    CpuMat* target_cpu = CpuMat::copy(target);
+    int y_pred = argmax(output_cpu);
+    int y_true = argmax(target_cpu);
+    delete output_cpu;
+    delete target_cpu;
     return (y_pred == y_true);
 }
 
 // Forward-pass the net
 GpuMat* fowardPass(std::vector<Layer_fc*> &net, const GpuMat* input) {
-    GpuMat* output = nullptr;
+    GpuMat* result;
     for(int i=0; i<net.size(); i++) {
-        output = net[i]->forwardPass(input);
-        input = output;
+        GpuMat* output = net[i]->forwardPass(input);
+        if (i < net.size() - 1) 
+            input = GpuMat::copy(output);
+        else
+            result = GpuMat::copy(output);
+        delete output;
     }
-    return new GpuMat(*output);
+    return result;
 }
 
 // Back-propgation for the last layer
@@ -173,6 +192,11 @@ void train(std::vector<Layer_fc*> &net, int batch_size, float lr, int log_interv
 
             if (isCorrect(output, target)) n_correct += 1;
             loss_total += crossEntropyLoss(output, target);
+
+            delete input;
+            delete target;
+            delete output;
+            delete dLoss;
         }
         // Update
         update(net, lr);
@@ -206,11 +230,16 @@ void test(std::vector<Layer_fc*> &net) {
             int progress = (float)(i+1) / (float)(test_cnt/10) * 10.0;
             std::cout << progress << "% ";
         } 
+
+        delete input;
+        delete target;
+        delete output;
     }
     std::cout << "Test Accuracy: " << (float)n_correct/(float)test_cnt << std::endl; 
     std::cout << "Test Loss: " << loss_total/(double)test_cnt << std::endl; 
     reset_grad(net);
 }
+
 
 
 int main() {
@@ -233,6 +262,20 @@ int main() {
     float lr = 0.01;
     int log_intervel = 10000 / batch_size;
     int epochs = 3;
+
+    // Training the network
+    for (int i=0; i<epochs; i++)
+        train(net, batch_size, lr, log_intervel);
+
+    // Test the network
+    test(net);
+
+    // Training the network
+    for (int i=0; i<epochs; i++)
+        train(net, batch_size, lr, log_intervel);
+
+    // Test the network
+    test(net);
 
     // Training the network
     for (int i=0; i<epochs; i++)

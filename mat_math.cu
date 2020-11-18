@@ -339,6 +339,9 @@ GpuMat* softmax(const GpuMat *input) {
     }
     float m = 1 / sum;
     GpuMat* output = MatEleMul(tmp, m);
+
+    delete tmp;
+    delete cm;
     return output;
 }
 

@@ -94,7 +94,7 @@ GpuMat* Layer_fc::forwardPass(const GpuMat *_input) {
     // Release tmp data
     Wx->release();
 
-    return output;
+    return GpuMat::copy(output);
 }
 
 // Back propgation function for the last layer
